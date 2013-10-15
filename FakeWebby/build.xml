@@ -1,0 +1,183 @@
+<project name="FakeWebby Build" default="BuildAll">
+	
+	 <property file="build.properties"/>
+	
+    <property name="src.dir" value="src"/>
+    <property name="web.dir" value="war"/>
+    <property name="bin" value="./bin"/>
+    <property name="lib" value="./lib"/>
+    <property name="src" value="./src"/> 
+    <property name="dist" value="./dist"/>
+	<property name="warfile" value="fakewebb"/>	
+	<property name="html" value="./WebContent"/>
+ 
+	<path id="master-classpath">
+        <fileset dir="${html}/WEB-INF/lib">
+            <include name="*.jar"/>
+        </fileset>
+        <fileset dir="${appserver.lib}">
+            <include name="servlet*.jar"/>
+        	<include name="catalina-ant.jar"/>
+        	<include name="tomcat-coyote.jar"/>
+        	<include name="tomcat-util.jar"/>
+        </fileset>
+        <fileset dir="${appserver.home}/bin">
+        	<include name="tomcat-juli.jar"/>
+        </fileset>
+        <pathelement path="${build.dir}"/>
+    </path>
+	
+    <path id="my.classpath">
+        <pathelement path="${java.class.path}"/>
+        <pathelement location="${bin}"/>
+        
+        <fileset dir="${lib}">
+            <include name="*.jar"/>
+        </fileset>        
+    </path>	 
+	
+    <target name="BuildAll" depends="list, classpath, cleanup, prep, compile, stop, undeploy, war, start, list" description="Complete rebuild.">
+        <echo message="Build complete."/>
+    </target>	
+	
+	<target name="classpath">
+		<property name="current.classpath" refid="my.classpath"/>
+		<echo level="info">
+	   		Classpath is :  ${current.classpath}
+	   		java.class.path : ${java.class.path}
+			master-classpath : ${master-classpath}
+	   </echo>
+	</target>
+    
+    <target name="cleanup">
+        <delete dir="${bin}"/>
+        <delete dir="${dist}"/>
+        <delete>
+           <fileset dir=".">
+              <include name="TEST*.xml"/>
+           </fileset>
+        </delete>
+    </target>
+    
+    <target name="prep">        
+        <mkdir dir="${bin}"/>
+        <mkdir dir="${dist}"/>        
+    </target>
+            
+    <target name="compile" description="Compile all Java classes" depends="prep">        
+        <javac srcdir="${src}" destdir="${bin}" debug="true" encoding="ISO-8859-1">
+           <!-- <classpath refid="my.classpath"/>-->
+        	<classpath refid="master-classpath"/>
+        </javac>        
+        <echo message="Compiled."/>
+    </target>
+
+	
+	<target name="war" depends="compile" description="Build WAR file.">
+		<copy todir="${bin}">
+			<fileset dir="${src}">
+				<include name="**/persistence.xml"/>
+			</fileset>
+		</copy>
+	   <delete file="${dist}/${warfile}.war"/>
+	   <war destfile="${dist}/${warfile}.war" webxml="WebContent/WEB-INF/web.xml">
+	      <classes dir="${bin}">
+	      </classes>
+	   	
+      	  <lib dir="${lib}"/>
+	      <fileset dir="${html}"/>  <!-- html files -->		        
+	   </war>
+		
+		<copy file="${dist}/${warfile}.war" tofile="C:\apache-tomcat-7.0.42\webapps\${warfile}.war"/> 		    
+		<!--<copy file="${dist}/${warfile}.war" tofile="C:\Users\gcruz\kepler\workspace\.metadata\.plugins\org.eclipse.wst.server.core\tmp1\webapps\${warfile}.war"/>-->
+		
+	</target>
+
+	
+	<!-- ============================================================== -->
+	<!-- Tomcat tasks -                                                 -->
+	<!-- ============================================================== -->
+
+	    <path id="catalina-ant-classpath">
+	        <!-- We need the Catalina jars for Tomcat * for other app servers - check the docs -->
+	        <fileset dir="${appserver.lib}">
+	            <include name="catalina-ant.jar"/>
+	        </fileset>
+	    </path>
+
+	    <taskdef name="install" classname="org.apache.catalina.ant.DeployTask">
+	        <classpath refid="catalina-ant-classpath"/>
+	    </taskdef>
+	    <taskdef name="reload" classname="org.apache.catalina.ant.ReloadTask">
+	        <classpath refid="catalina-ant-classpath"/>
+	    </taskdef>
+	    <taskdef name="list" classname="org.apache.catalina.ant.ListTask">
+	        <classpath refid="catalina-ant-classpath"/>
+	    </taskdef>
+	    <taskdef name="start" classname="org.apache.catalina.ant.StartTask">
+	        <classpath refid="catalina-ant-classpath"/>
+	    </taskdef>
+	    <taskdef name="stop" classname="org.apache.catalina.ant.StopTask">
+	        <classpath refid="catalina-ant-classpath"/>
+	    </taskdef>	
+
+	    <target name="install" description="Install application in Tomcat">
+	        <install url="${tomcat.manager.url}/text"
+	                 username="${tomcat.manager.username}"
+	                 password="${tomcat.manager.password}"
+	                 path="/${warfile}"
+	                 war="${warfile}.war"/>
+	    </target>
+	
+	    <target name="reload" description="Reload application in Tomcat">
+	        <reload url="${tomcat.manager.url}/text"
+	                 username="${tomcat.manager.username}"
+	                 password="${tomcat.manager.password}"
+	                 path="/${warfile}"/>
+	    </target>
+	
+	    <target name="start" description="Start Tomcat application">
+	        <start url="${tomcat.manager.url}/text"
+	                 username="${tomcat.manager.username}"
+	                 password="${tomcat.manager.password}"
+	                 path="/${warfile}"/>
+	    </target>
+	
+	    <target name="stop" description="Stop Tomcat application">
+	     <echo message="${tomcat.manager.url}/text"/>
+	        <stop url="${tomcat.manager.url}/text"
+	                 username="${tomcat.manager.username}"
+	                 password="${tomcat.manager.password}"
+	                 path="/${warfile}"/>
+	    </target>
+
+	    <target name="list" description="List Tomcat applications">
+	    	<echo message="${tomcat.manager.url}/text"/>
+	    	<list url="${tomcat.manager.url}/text"
+	                 username="${tomcat.manager.username}"
+	                 password="${tomcat.manager.password}"/>
+	    </target>
+	    <target name="clean" description="Clean output directories">
+	        <delete>
+	            <fileset dir="${build.dir}">
+	                <include name="**/*.class"/>
+	            </fileset>
+	        </delete>
+	    </target>
+	
+	    <target name="undeploy" description="Un-Deploy application">
+	        <delete>
+	            <fileset dir="${deploy.path}/${warfile}">
+	                <include name="**/*.*"/>
+	            </fileset>
+	        </delete>
+	    </target>
+
+<!-- End Tomcat tasks -->
+	
+	
+	
+	
+</project>
+
+	
