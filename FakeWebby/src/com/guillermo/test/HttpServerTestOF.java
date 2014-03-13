@@ -1,4 +1,3 @@
-
 package com.guillermo.test;
 
 
@@ -6,7 +5,7 @@ import java.net.InetSocketAddress;
 
 import com.sun.net.httpserver.HttpServer;
 
-public class HttpServerTestDT extends ServerTestDT{
+public class HttpServerTestOF extends ServerTestOF{
 	
 	public static final int port = 8282;
 	

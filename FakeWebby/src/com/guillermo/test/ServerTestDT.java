@@ -45,6 +45,7 @@ public class ServerTestDT {
     		boolean refundError = false;
     		boolean anonymousIdError = false;
     		boolean transactionDetailError = false;
+    		boolean permissionDenialError = false;
     		
     		String forwardingToServer = "http://localhost";
     		int dtPort = 9988;
@@ -112,7 +113,7 @@ public class ServerTestDT {
     	    
     	    
     	  //Get Token Request Refresh by supplying Authorization Code – using Basic Authorization
-        	if(1 == 1){
+        /*	if(1 == 1){
         			ifStatementProcessed = "run anyways";        		  		
 	        		httpStatusCode = 200;
 	        		heads.add("Content-Type", "text/plain");
@@ -151,7 +152,7 @@ public class ServerTestDT {
 	        				
 	        		
 	        		
-        	}
+        	}*/
         	
     	    
     	    
@@ -234,7 +235,7 @@ public class ServerTestDT {
 	        		httpStatusCode = 200;
 	        		heads.add("Content-Type", "application/json");
 	        		response = 	"{																	" +	        				
-	        					"\"access_token\": \"OLXhwEdlH4n2euiLOn3WBveZxL33hGVLP8lw\",		" +
+	        					"\"access_token\": \"OLXhwEdlH4n2euiLOn3WB" + randomTransactionNum + "\",		" +
 	        					"\"token_type\":\"Bearer\",											" +
 	        					"\"expires_in\": 3595,												" +
 	        					"\"refresh_token\": \"EyAmJRNDp3kxRMLQt0jZsSRwnGUQHRPb4uYW\"		" +
@@ -491,7 +492,7 @@ public class ServerTestDT {
     		){
     		// Get a Date object that represents 30 days from now
     		Calendar cal = Calendar.getInstance();
-    		Date today = new Date();                   // Current date
+    		Date today = new Date();                   // Current date 
     		cal.setTime(today);                        // Set it in the Calendar object
     		cal.add(Calendar.DATE, 30);                // Add 30 days
     		Date expiration = cal.getTime();           // Retrieve the resulting date
@@ -641,7 +642,7 @@ public class ServerTestDT {
         			&& requestHeaders.get("X-SDP-Request-Id") != null 
         			&& requestHeaders.containsKey("Authorization") 
                 	&& (requestHeaders.get("Authorization").toString().indexOf("OAuth") > -1 || requestHeaders.get("Authorization").toString().indexOf("Bearer") > -1)
-        			&& requestBody.indexOf("\"transactionStatus\":\"refunded\"") > -1    			
+        			&& (requestBody.indexOf("\"transactionStatus\": \"refunded\"") > -1 || requestBody.indexOf("\"transactionStatus\":\"refunded\"") > -1)    			
         			&& command.equals("PUT") 			
         		){        		
         		ifStatementProcessed = "refund REFUND request (" + requestHeaders.get("Authorization").toString() + ")- some productMetadata elements supplied";        		  		
@@ -832,7 +833,144 @@ public class ServerTestDT {
         		        		
         		
         	}         	
-        	        	
+   
+        	
+        	//permission check
+        	else if(t.getRequestURI().toString().indexOf("/permission") > -1     			
+        			&& requestHeaders.containsKey("X-SDP-Request-Id") 
+        			&& requestHeaders.get("X-SDP-Request-Id") != null 
+        			&& requestHeaders.containsKey("Authorization") 
+                	&& requestHeaders.get("Authorization").toString().indexOf("Bearer") > -1
+        			&& command.equals("POST")   			
+        		){
+        		// Get a Date object that represents 30 days from now
+        		Calendar cal = Calendar.getInstance();
+        		Date today = new Date();                   // Current date
+        		cal.setTime(today);                        // Set it in the Calendar object
+        		cal.add(Calendar.DATE, 30);                // Add 30 days
+        		Date expiration = cal.getTime();           // Retrieve the resulting date
+        		ifStatementProcessed = "permission check";        		  		
+        		httpStatusCode = 200;    
+        		heads.add("Content-Type", "application/vnd.sdp.permissionStatus+json");
+        		heads.add("Cache-Control", "no-cache"); 
+        		heads.add("Date", DateFormatUtils.format(System.currentTimeMillis(), "EEE',' dd MMM yyyy HH:mm:ss z"));
+        		heads.add("Expires", DateFormatUtils.format(expiration, "EEE',' dd MMM yyyy HH:mm:ss z"));        		
+        		heads.add("X-SDP-Request-Id", requestHeaders.get("X-SDP-Request-Id").toString());
+        		heads.add("Content-MD5", "Rte4er3R3f3f345tge3fr4"); 	
+        		
+        		String Authorization = requestHeaders.get("Authorization").toString();
+        		String[] auth = Authorization.split(" ");
+        		String token = auth[1].replace("]", "");
+        		 
+        		 
+        		//HASH
+        		MessageDigest md = MessageDigest.getInstance("MD5");
+    	        md.update(token.getBytes());    	 
+    	        byte byteData[] = md.digest();      	       
+    	        StringBuffer sb = new StringBuffer();
+    	        for (int i = 0; i < byteData.length; i++) {
+    	         sb.append(Integer.toString((byteData[i] & 0xff) + 0x100, 16).substring(1));
+    	        }    	 
+    	        String tokenFinal = sb.toString();   		 
+     	        
+        		String jsonPart = requestBody.substring(requestBody.indexOf("{"), requestBody.length());  
+        		JSON json = JSONSerializer.toJSON(jsonPart);
+        		JSONObject jsonObject = JSONObject.fromObject(json);	
+    	        
+    	        if(permissionDenialError){
+	        	    response =  "{																											" +	   
+				        		"	\"serviceProviderData\":{																				" +	   
+								"	\"referenceId\":\"" + jsonObject.getJSONObject("serviceProviderData").getString("referenceId") +"\"		" +	   
+				        		"	},																										" +	   
+				        		"	\"permission\":{																						" +	   
+				        		"		\"status\":\"declined\",																			" +	   
+				        		"		\"reason\":{																						" +	   
+				        		"			\"code\":\"InsufficientCredit\",																" +	   
+				        		"			\"msg\":\"The customer does not have enough credit\"											" +	   
+				        		"		}																									" +	   
+				        		"	}																										" +	   
+				        		"}																											";
+    	        }
+    	        else{        	
+	    	        response =  "{																											" +	   
+				        		"	\"serviceProviderData\":{																				" +	   
+								"   \"referenceId\":\"" + jsonObject.getJSONObject("serviceProviderData").getString("referenceId") +"\"		" +
+				        		"	},																										" +	   
+				        		"	\"permission\":{																						" +	   
+				        		"		\"status\":\"authorised\"																			" +	 
+				        		"	}																										" +	   
+				        		"}																											"; 
+    	        }        			
+        		        		
+        		
+        	} 
+        	
+        	
+        	
+        	//chargeOnePhase CHARGE request - some productMetadata elements supplied
+        	else if(t.getRequestURI().toString().indexOf("/payment/chargeOnePhase") > -1     			
+        			&& requestHeaders.containsKey("X-SDP-Request-Id") 
+        			&& requestHeaders.get("X-SDP-Request-Id") != null 
+        			&& requestHeaders.containsKey("Authorization") 
+                	&& requestHeaders.get("Authorization").toString().indexOf("Bearer") > -1
+            		&& requestBody.indexOf("\"transactionStatus\":\"charged\"") > -1   
+            		&& command.equals("POST")   			
+        		){
+        		// Get a Date object that represents 30 days from now
+        		Calendar cal = Calendar.getInstance();
+        		Date today = new Date();                   // Current date 
+        		cal.setTime(today);                        // Set it in the Calendar object
+        		cal.add(Calendar.DATE, 30);                // Add 30 days
+        		Date expiration = cal.getTime();           // Retrieve the resulting date
+        		ifStatementProcessed = "chargeOnePhase CHARGE request - some productMetadata elements supplied";        		  		
+        		httpStatusCode = 201;        		         		
+        		String locatingTo = "http://api.sdp.tmo.net/payment/transaction/" + randomTransactionNum;     //SHOULD BE HTTPS      		
+        		heads.add("location", locatingTo);          		
+        		heads.add("Content-Type", "application/vnd.sdp.paymentTransaction+json");
+        		heads.add("Cache-Control", "no-cache"); 
+        		heads.add("Date", DateFormatUtils.format(System.currentTimeMillis(), "EEE',' dd MMM yyyy HH:mm:ss z"));
+        		heads.add("Expires", DateFormatUtils.format(expiration, "EEE',' dd MMM yyyy HH:mm:ss z"));
+        		heads.add("Last-Modified", DateFormatUtils.format(System.currentTimeMillis(), "EEE',' dd MMM yyyy HH:mm:ss z"));
+        		heads.add("X-SDP-Request-Id", requestHeaders.get("X-SDP-Request-Id").toString());
+        		heads.add("Content-MD5", "Rte4er3R3f3f345tge3fr4");   
+        		
+        		String jsonPart = requestBody.substring(requestBody.indexOf("{"), requestBody.length());      
+        		JSON json = JSONSerializer.toJSON(jsonPart);
+        		JSONObject jsonObject = JSONObject.fromObject(json);	
+        		
+        		response =  "{																																							" +
+    					"    			\"totalPrice\":{																																" +
+    					"    				\"grossPrice\":" + jsonObject.getJSONObject("chargeDetails").getJSONObject("chargePrice").getDouble("grossPrice") +",						" +
+    					"    				\"netPrice\":" + jsonObject.getJSONObject("chargeDetails").getJSONObject("chargePrice").getDouble("netPrice") +",							" +
+    					"    				\"taxAmount\":" + jsonObject.getJSONObject("chargeDetails").getJSONObject("chargePrice").getDouble("taxAmount") +",							" +
+    					"    				\"taxRate\":" + jsonObject.getJSONObject("chargeDetails").getJSONObject("chargePrice").getDouble("taxRate") +",								" +
+    					"    				\"currencyCode\":\"" + jsonObject.getJSONObject("chargeDetails").getJSONObject("chargePrice").getString("currencyCode") +"\"				" +
+    					"    			},																																				" +
+    					"    			\"serviceProviderData\":{																														" +	
+    					"    				\"referenceId\":\"" + jsonObject.getJSONObject("serviceProviderData").getString("referenceId") +"\"											" +	
+    					"    			},																																				" +
+    					"    			\"transactionDetail\":{																															" +
+    					"    				\"transactionStatus\":\"" + jsonObject.getString("transactionStatus") +"\",																	" +
+    					"    				\"transactionType\":\"twoPhase\",																											" +	
+    					"    				\"transactionModel\":\"factoring\"																											" +
+    					"    			},																																				" +
+    					"    			\"links\":[																																		" +
+    					"    		{																																					" +
+    					"    				\"href\":\"/payment/transaction/" + randomTransactionNum + "\",																				" +
+    					"    				\"rel\":\"self\"																															" +
+    					"    			},																																				" +	
+    					"    			{																																				" +	
+    					"    				\"href\":\"/payment/transaction/" + randomTransactionNum + "/parts\",																		" +
+    					"    				\"rel\":\"transactionParts\"																												" +
+    					"    			}																																				" +
+    					"    			]																																				" +	
+    					"}																																								";
+        			
+        		        		
+        		
+        	}      	
+        	
+        	
         	
         	
 		//*************************************************************************************************************************************//

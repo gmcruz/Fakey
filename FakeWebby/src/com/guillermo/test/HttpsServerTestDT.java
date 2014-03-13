@@ -13,7 +13,7 @@ import com.sun.net.httpserver.HttpsServer;
 
 public class HttpsServerTestDT extends ServerTestDT{
 	
-	public static final int port = 8282;	
+	public static final int port = 8181;	
 
     public static void main(String[] args) throws Exception {
         HttpsServer server = HttpsServer.create(new InetSocketAddress(port), 0);
