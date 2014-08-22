@@ -6,9 +6,9 @@ import java.net.InetSocketAddress;
 import com.guillermo.test.ServerTestDT.MyHandler;
 import com.sun.net.httpserver.HttpServer;
 
-public class HttpServerTestVD extends ServerTestDT{
+public class HttpServerTestVF extends ServerTestVF{
 	
-	public static final int port = 25444;
+	public static final int port = 8484;
 	
     public static void main(String[] args) throws Exception {
     	
